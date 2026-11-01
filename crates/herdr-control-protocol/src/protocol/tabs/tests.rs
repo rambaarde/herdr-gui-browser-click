@@ -28,6 +28,25 @@ fn tab_operations_round_trip() {
             id: 3,
             path: "/tmp/a.png".into(),
         },
+        TabOp::Input {
+            id: 3,
+            input: PageInput::Click {
+                x: 250,
+                y: 750,
+                count: 2,
+            },
+        },
+        TabOp::Input {
+            id: 3,
+            input: PageInput::Key {
+                key: "p".into(),
+                modifiers: PageModifiers {
+                    command: true,
+                    shift: true,
+                    ..PageModifiers::default()
+                },
+            },
+        },
         TabOp::Zoom {
             id: 3,
             change: ZoomChange::Percent { percent: 150 },
@@ -108,6 +127,13 @@ fn page_and_arrival_operations_extend_the_answer_timeout() {
         wait(TabOp::Screenshot {
             id: 1,
             path: "/a.png".into()
+        }),
+        PAGE_WAIT_SECONDS
+    );
+    assert_eq!(
+        wait(TabOp::Input {
+            id: 1,
+            input: PageInput::Type { text: "hi".into() }
         }),
         PAGE_WAIT_SECONDS
     );

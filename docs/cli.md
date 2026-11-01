@@ -102,6 +102,13 @@ Herdr UI** entry, which both Windows installers add, runs this command through
 | `browser zoom ID +\|-\|reset\|PERCENT` | Zoom a page tab a step, back to 100%, or to 50-300%; the tab keeps it |
 | `browser text ID` | The page's visible text |
 | `browser screenshot ID PATH` | A PNG of the visible page, at most 2000 px a side (macOS) |
+| `browser click ID X Y [--double]` | Native click at a visual coordinate (macOS) |
+| `browser type ID TEXT` | Native text input at the page's insertion point (macOS) |
+| `browser key ID KEY` | Native key press (macOS) |
+| `browser hotkey ID MODIFIER... KEY` | Native modified key press; modifiers are `cmd`, `ctrl`, `option`, and `shift` (macOS) |
+| `browser scroll ID X Y DX DY` | Native scroll at a visual coordinate (macOS) |
+| `browser drag ID FROM_X FROM_Y TO_X TO_Y` | Native pointer drag (macOS) |
+| `browser select ID X Y TEXT` | Open a control, type its visible option text, and press Enter (macOS) |
 | `code open FILE[:LINE]` | A read-only code tab at a line |
 | `code edit FILE[:LINE]` | Your terminal editor, in a new pane beside yours |
 | `devices` | The Devices overview |
@@ -109,6 +116,23 @@ Herdr UI** entry, which both Windows installers add, runs this command through
 | `orchestrator items\|issues\|prs` | What it last synced, from its local database (no app needed) |
 | `review` | The review of your workspace's uncommitted changes |
 | `px0 [open]` | Open or focus px0 on your local workspace's checkout (macOS and Windows) |
+
+Browser input uses the ChatGPT and Claude GUI computer-use pattern. Take a
+`browser screenshot`, send one input action, and take another screenshot.
+Coordinates are normalized from `0` through `1000` from the visible page's
+top-left. `500 500` is the center. This frame is independent of display scale
+and window size. Positive scroll deltas move content right and down.
+
+The app shows and targets only the named tab. On macOS, it sends AppKit events
+directly to that tab's WKWebView. It does not query DOM selectors, run caller
+JavaScript, move the real pointer, or post system-wide input. A completed GUI
+task has a first screenshot, one screenshot after every action, and a final
+screenshot that visibly proves the requested state. Invalid tabs, coordinates,
+keys, click counts, and oversized text are refused without a fallback.
+
+The loop is on demand. The app does not run continuous capture or input
+polling. Each screenshot or input request performs one bounded operation and
+exits, so an idle controlled page adds no computer-use CPU work.
 
 `px0 open` reuses one editor tab per workspace. It discovers a local px0
 workbench or starts an installed px0; `config set px0.url http://127.0.0.1:7777/`

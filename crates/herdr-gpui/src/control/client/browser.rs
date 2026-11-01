@@ -204,6 +204,9 @@ pub(super) fn run(command: BrowserCommand, context: &Context) -> crate::Result<O
         BrowserCommand::Forward { id } => context.act(Request::Tab, TabOp::Forward { id }),
         BrowserCommand::Text { id } => text(id, context),
         BrowserCommand::Screenshot { id, path } => screenshot(id, &path, context),
+        BrowserCommand::Input { id, input } => {
+            context.act(Request::Tab, TabOp::Input { id, input })
+        }
         BrowserCommand::Zoom { id, change } => zoom(id, change, context),
     }
 }

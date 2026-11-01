@@ -36,7 +36,19 @@ herdr-gpui browser zoom TAB +|-|reset|PERCENT
     Zoom a page tab in or out a step, back to 100%, or to PERCENT (50-300),
     as the font size keys do while it is focused. The tab keeps its zoom.
 herdr-gpui browser screenshot TAB PATH
-    Save a PNG of the page (macOS).
+    Save a PNG of the page (macOS). This is the observation step for native
+    visual computer use.
+herdr-gpui browser click TAB X Y [--double]
+herdr-gpui browser type TAB TEXT
+herdr-gpui browser key TAB KEY
+herdr-gpui browser hotkey TAB MODIFIER... KEY
+herdr-gpui browser scroll TAB X Y DELTA_X DELTA_Y
+herdr-gpui browser drag TAB FROM_X FROM_Y TO_X TO_Y
+herdr-gpui browser select TAB X Y TEXT
+    Send native input to the exact page tab (macOS). Coordinates use 0-1000
+    from the screenshot's top-left; 500 500 is its center. Positive scroll
+    deltas move content right and down. Modifiers: cmd, ctrl, option, shift.
+    Take another screenshot after every action.
 herdr-gpui browser skill
     Print the agent skill that explains these commands.
 herdr-gpui browser example

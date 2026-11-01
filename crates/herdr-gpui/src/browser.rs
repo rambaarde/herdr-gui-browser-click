@@ -22,6 +22,8 @@ mod code;
 mod code_group;
 mod code_start;
 mod code_view;
+#[cfg(target_os = "macos")]
+mod computer_use;
 mod editor;
 #[cfg(any(target_os = "macos", windows))]
 mod favicon;

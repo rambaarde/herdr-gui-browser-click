@@ -128,8 +128,6 @@ integration-test = [
   "herdr-github/test-support",
   "objc2-app-kit/NSPasteboardItem",
   "dep:cocoa",
-  "dep:core-graphics",
-  "dep:foreign-types",
   "dep:objc",
   "dep:raw-window-handle",
 ]
@@ -190,8 +188,8 @@ objc2-core-foundation.workspace = true
 objc2-web-kit.workspace         = true
 objc2-user-notifications.workspace = true
 cocoa                        = { optional = true, workspace = true }
-core-graphics                = { optional = true, workspace = true }
-foreign-types                = { optional = true, workspace = true }
+core-graphics.workspace      = true
+foreign-types.workspace      = true
 nix.workspace                = true
 objc                         = { optional = true, workspace = true }
 objc2.workspace              = true

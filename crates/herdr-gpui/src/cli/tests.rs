@@ -1,5 +1,6 @@
 use super::*;
 use control::BrowserCommand;
+use herdr_control_protocol::protocol::tabs::{PageInput, PageModifiers};
 
 mod automation;
 mod browser_zoom;
@@ -108,6 +109,85 @@ fn browser_commands_never_start_the_gui() {
         browser(BrowserCommand::Reload)
     );
     assert_eq!(
+        mode(&["browser", "click", "7", "250", "750", "--double"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Click {
+                x: 250,
+                y: 750,
+                count: 2,
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "type", "7", "Hello world"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Type {
+                text: "Hello world".into(),
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "key", "7", "enter"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Key {
+                key: "enter".into(),
+                modifiers: PageModifiers::default(),
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "hotkey", "7", "cmd", "shift", "p"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Key {
+                key: "p".into(),
+                modifiers: PageModifiers {
+                    command: true,
+                    shift: true,
+                    ..PageModifiers::default()
+                },
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "scroll", "7", "500", "600", "0", "800"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Scroll {
+                x: 500,
+                y: 600,
+                delta_x: 0,
+                delta_y: 800,
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "drag", "7", "100", "200", "900", "800"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Drag {
+                from_x: 100,
+                from_y: 200,
+                to_x: 900,
+                to_y: 800,
+            },
+        })
+    );
+    assert_eq!(
+        mode(&["browser", "select", "7", "500", "500", "Second"]).unwrap(),
+        browser(BrowserCommand::Input {
+            id: 7,
+            input: PageInput::Select {
+                x: 500,
+                y: 500,
+                text: "Second".into(),
+            },
+        })
+    );
+    assert_eq!(
         mode(&["browser", "feedback"]).unwrap(),
         browser(BrowserCommand::Feedback { wait: 0 })
     );
@@ -157,6 +237,14 @@ fn browser_commands_never_start_the_gui() {
         (
             &["browser", "feedback", "now"],
             CliError::UnexpectedArgument("now".into()),
+        ),
+        (
+            &["browser", "click", "7", "1001", "0"],
+            CliError::InvalidValue("COORDINATE (0-1000)"),
+        ),
+        (
+            &["browser", "hotkey", "7", "p"],
+            CliError::InvalidValue("MODIFIER... KEY"),
         ),
     ] {
         assert_eq!(mode(args).unwrap_err(), expected, "{args:?}");

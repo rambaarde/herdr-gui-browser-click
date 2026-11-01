@@ -2,6 +2,9 @@
 pub use herdr_control_protocol::Placement;
 
 use super::{Args, CliError, ZoomChange};
+use herdr_control_protocol::protocol::tabs::{
+    PAGE_COORDINATE_MAX, PAGE_INPUT_TEXT_BYTES, PageInput, PageModifiers,
+};
 use std::ffi::OsString;
 
 /// `herdr-gpui browser ...`, answered by the running app.
@@ -45,6 +48,11 @@ pub enum BrowserCommand {
         id: u64,
         path: std::path::PathBuf,
     },
+    /// Native input sent to one exact page tab.
+    Input {
+        id: u64,
+        input: PageInput,
+    },
     Zoom {
         id: u64,
         change: ZoomChange,
@@ -62,6 +70,77 @@ fn tab_id(value: Option<OsString>) -> Result<u64, CliError> {
         .as_ref()
         .and_then(|value| value.to_str()?.parse().ok())
         .ok_or(CliError::InvalidValue("TAB (an ID from `browser list`)"))
+}
+
+fn coordinate(value: Option<OsString>) -> Result<u16, CliError> {
+    value
+        .as_ref()
+        .and_then(|value| value.to_str()?.parse().ok())
+        .filter(|value| *value <= PAGE_COORDINATE_MAX)
+        .ok_or(CliError::InvalidValue("COORDINATE (0-1000)"))
+}
+
+fn delta(value: Option<OsString>) -> Result<i32, CliError> {
+    value
+        .as_ref()
+        .and_then(|value| value.to_str()?.parse().ok())
+        .filter(|value: &i32| value.unsigned_abs() <= 10_000)
+        .ok_or(CliError::InvalidValue("DELTA (-10000 to 10000)"))
+}
+
+fn input_text(value: Option<OsString>, command: &'static str) -> Result<String, CliError> {
+    let text = utf8(value.ok_or(CliError::MissingArgument {
+        command,
+        what: "TEXT",
+    })?)?;
+    if text.is_empty() || text.len() > PAGE_INPUT_TEXT_BYTES {
+        return Err(CliError::InvalidValue("TEXT (1-16384 UTF-8 bytes)"));
+    }
+    Ok(text)
+}
+
+fn key_name(value: Option<OsString>) -> Result<String, CliError> {
+    let key = utf8(value.ok_or(CliError::MissingArgument {
+        command: "browser key",
+        what: "KEY",
+    })?)?;
+    if key.is_empty() || key.len() > 32 {
+        return Err(CliError::InvalidValue("KEY"));
+    }
+    Ok(key)
+}
+
+fn input(id: u64, input: PageInput) -> BrowserCommand {
+    BrowserCommand::Input { id, input }
+}
+
+fn hotkey(id: u64, args: impl Iterator<Item = OsString>) -> Result<BrowserCommand, CliError> {
+    let mut modifiers = PageModifiers::default();
+    let mut key = None;
+    for argument in args {
+        let text = utf8(argument.clone())?;
+        match text.to_ascii_lowercase().as_str() {
+            "cmd" | "command" if key.is_none() => modifiers.command = true,
+            "ctrl" | "control" if key.is_none() => modifiers.control = true,
+            "alt" | "option" if key.is_none() => modifiers.option = true,
+            "shift" if key.is_none() => modifiers.shift = true,
+            _ if key.is_none() => key = Some(text),
+            _ => return Err(CliError::UnexpectedArgument(argument)),
+        }
+    }
+    if !modifiers.command && !modifiers.control && !modifiers.option && !modifiers.shift {
+        return Err(CliError::InvalidValue("MODIFIER... KEY"));
+    }
+    Ok(input(
+        id,
+        PageInput::Key {
+            key: key.ok_or(CliError::MissingArgument {
+                command: "browser hotkey",
+                what: "MODIFIER... KEY",
+            })?,
+            modifiers,
+        },
+    ))
 }
 
 /// `+`, `-`, `reset`, or a percent such as `125` or `125%`.
@@ -138,6 +217,90 @@ pub(super) fn parse(args: &mut Args) -> Result<BrowserCommand, CliError> {
                 },
                 args,
             );
+        }
+        Some("click") => {
+            let id = tab_id(args.next())?;
+            let x = coordinate(args.next())?;
+            let y = coordinate(args.next())?;
+            let mut count = 1;
+            if let Some(argument) = args.next() {
+                if argument == "--double" {
+                    count = 2;
+                } else if argument == "--help" || argument == "-h" {
+                    return Ok(BrowserCommand::Help);
+                } else {
+                    return Err(CliError::UnexpectedArgument(argument));
+                }
+            }
+            return none_left(input(id, PageInput::Click { x, y, count }), args);
+        }
+        Some("type") => {
+            let id = tab_id(args.next())?;
+            let text = input_text(args.next(), "browser type")?;
+            return none_left(input(id, PageInput::Type { text }), args);
+        }
+        Some("key") => {
+            let id = tab_id(args.next())?;
+            let key = key_name(args.next())?;
+            return none_left(
+                input(
+                    id,
+                    PageInput::Key {
+                        key,
+                        modifiers: PageModifiers::default(),
+                    },
+                ),
+                args,
+            );
+        }
+        Some("hotkey") => {
+            let id = tab_id(args.next())?;
+            return hotkey(id, args);
+        }
+        Some("scroll") => {
+            let id = tab_id(args.next())?;
+            let x = coordinate(args.next())?;
+            let y = coordinate(args.next())?;
+            let delta_x = delta(args.next())?;
+            let delta_y = delta(args.next())?;
+            return none_left(
+                input(
+                    id,
+                    PageInput::Scroll {
+                        x,
+                        y,
+                        delta_x,
+                        delta_y,
+                    },
+                ),
+                args,
+            );
+        }
+        Some("drag") => {
+            let id = tab_id(args.next())?;
+            let from_x = coordinate(args.next())?;
+            let from_y = coordinate(args.next())?;
+            let to_x = coordinate(args.next())?;
+            let to_y = coordinate(args.next())?;
+            return none_left(
+                input(
+                    id,
+                    PageInput::Drag {
+                        from_x,
+                        from_y,
+                        to_x,
+                        to_y,
+                    },
+                ),
+                args,
+            );
+        }
+        Some("select") => {
+            let id = tab_id(args.next())?;
+            let x = coordinate(args.next())?;
+            let y = coordinate(args.next())?;
+            let text = input_text(args.next(), "browser select")?;
+            return none_left(input(id, PageInput::Select { x, y, text }), args);
         }
         Some("feedback") => {
             let mut wait = 0;

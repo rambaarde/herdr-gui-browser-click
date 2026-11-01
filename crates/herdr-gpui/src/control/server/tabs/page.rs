@@ -15,10 +15,10 @@ use gpui::App;
 
 #[cfg(any(target_os = "macos", windows))]
 mod embedded;
-#[cfg(target_os = "macos")]
-pub(super) use embedded::screenshot;
 #[cfg(any(target_os = "macos", windows))]
 pub(super) use embedded::{history, text};
+#[cfg(target_os = "macos")]
+pub(super) use embedded::{input, screenshot};
 
 /// The most a page's text may take in an answer, as JSON, leaving room
 /// for the rest of the answer within the socket's bound.
@@ -142,6 +142,22 @@ pub(super) fn history(_: &Caller, _: u64, _: bool, _: &mut App) -> Response {
 #[cfg(not(any(target_os = "macos", windows)))]
 pub(super) fn text(_: Caller, _: u64, incoming: socket::Incoming, _: &mut Watches, _: &mut App) {
     incoming.respond(no_pages());
+}
+
+/// Native visual-computer input reaches WKWebView only on macOS.
+#[cfg(not(target_os = "macos"))]
+pub(super) fn input(
+    _: Caller,
+    _: u64,
+    _: crate::control::protocol::tabs::PageInput,
+    incoming: socket::Incoming,
+    _: &mut Watches,
+    _: &mut App,
+) {
+    incoming.respond(Response::error(
+        ErrorCode::Unsupported,
+        "Native input into page tabs needs the macOS build",
+    ));
 }
 
 /// WebKit's snapshot is the one way to picture a page, and only macOS

@@ -269,6 +269,21 @@ impl HerdrWindow {
 
 #[cfg(target_os = "macos")]
 impl HerdrWindow {
+    /// Sends one native visual-computer input action to tab `id`. `None`
+    /// means its page has not reached a visible frame yet.
+    pub(crate) fn page_input(
+        &self,
+        id: TabId,
+        input: &herdr_control_protocol::protocol::tabs::PageInput,
+    ) -> Option<crate::browser::computer_use::Result<()>> {
+        let page = self.browser.pages.page(id)?;
+        if !self.browser.pages.is_shown(id) || self.browser.pages.drawn_at(id).is_none() {
+            return None;
+        }
+        page.focus();
+        Some(crate::browser::computer_use::perform(page.raw(), input))
+    }
+
     /// Takes a picture of tab `id`'s page as it shows now, handed to `done`
     /// as TIFF bytes. Whether one was asked for: the page must be on
     /// screen, where it was laid out last frame.

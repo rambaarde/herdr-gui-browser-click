@@ -7,6 +7,12 @@ pub const PAGE_WAIT_SECONDS: u64 = 15;
 /// How long the window may take to switch to the caller's workspace before
 /// opening a tab there.
 pub const ARRIVE_WAIT_SECONDS: u64 = 5;
+/// Browser input coordinates span this square, from the page's top-left.
+/// Keeping them independent of display scale lets agents act on Retina and
+/// resized windows from the same screenshot.
+pub const PAGE_COORDINATE_MAX: u16 = 1_000;
+/// Largest text one browser input request accepts.
+pub const PAGE_INPUT_TEXT_BYTES: usize = 16 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -42,6 +48,11 @@ pub enum TabOp {
         id: u64,
         path: String,
     },
+    /// Native input into the page. Coordinates use [`PAGE_COORDINATE_MAX`].
+    Input {
+        id: u64,
+        input: PageInput,
+    },
     /// How large a page tab draws its page.
     Zoom {
         id: u64,
@@ -74,7 +85,7 @@ pub enum TabOp {
 impl TabOp {
     pub fn wait_seconds(&self) -> u64 {
         match self {
-            Self::Text { .. } | Self::Screenshot { .. } => PAGE_WAIT_SECONDS,
+            Self::Text { .. } | Self::Screenshot { .. } | Self::Input { .. } => PAGE_WAIT_SECONDS,
             Self::Code { .. }
             | Self::Edit { .. }
             | Self::Devices
@@ -100,6 +111,62 @@ pub enum ZoomChange {
     Out,
     Reset,
     Percent { percent: u16 },
+}
+
+/// Modifier keys held around one native page key.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PageModifiers {
+    #[serde(default)]
+    pub command: bool,
+    #[serde(default)]
+    pub control: bool,
+    #[serde(default)]
+    pub option: bool,
+    #[serde(default)]
+    pub shift: bool,
+}
+
+/// One native visual-computer input action in a page tab.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "input", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PageInput {
+    /// Click once or twice at a normalized page coordinate.
+    Click {
+        x: u16,
+        y: u16,
+        #[serde(default = "single_click")]
+        count: u8,
+    },
+    /// Insert text at the page's current native insertion point.
+    Type { text: String },
+    /// Press and release one key with optional modifiers.
+    Key {
+        key: String,
+        #[serde(default)]
+        modifiers: PageModifiers,
+    },
+    /// Scroll at a normalized page coordinate; positive deltas move content
+    /// right and down.
+    Scroll {
+        x: u16,
+        y: u16,
+        delta_x: i32,
+        delta_y: i32,
+    },
+    /// Drag from one normalized page coordinate to another.
+    Drag {
+        from_x: u16,
+        from_y: u16,
+        to_x: u16,
+        to_y: u16,
+    },
+    /// Choose an option after opening the control at a coordinate.
+    Select { x: u16, y: u16, text: String },
+}
+
+const fn single_click() -> u8 {
+    1
 }
 
 impl TabKind {

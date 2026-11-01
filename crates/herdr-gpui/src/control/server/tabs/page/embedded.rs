@@ -133,6 +133,12 @@ pub(in crate::control::server::tabs) fn text(
 }
 
 #[cfg(target_os = "macos")]
+pub(in crate::control::server::tabs) use input::input;
+
+#[cfg(target_os = "macos")]
+mod input;
+
+#[cfg(target_os = "macos")]
 pub(in crate::control::server::tabs) use picture::screenshot;
 
 #[cfg(target_os = "macos")]
